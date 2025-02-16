@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Última Transação - Contrato Criado</title>
+</head>
+<body>
+  <h1>Última Transação</h1>
+  <div id="result">Carregando...</div>
+
+  <script>
+    // Sua API Key do BscScan
+    const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
+    // Contrato que você está monitorando
+    const contractAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
+
+    async function getLastTransaction() {
+      // 1. Buscar a última transação usando txlist
+      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${contractAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
+
+      try {
+        const response = await fetch(urlTxList);
+        const data = await response.json();
+        
+        if (data.status === '1' && data.result.length > 0) {
+          const lastTx = data.result[0]; // a mais recente
+          const txHash = lastTx.hash;
+          
+          // 2. Agora buscar o recibo (eth_getTransactionReceipt) para ver se criou um contrato
+          const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
+          const receiptResponse = await fetch(urlReceipt);
+          const receiptData = await receiptResponse.json();
+
+          if (receiptData.result) {
+            // Se for criação de contrato, receiptData.result.contractAddress terá o endereço
+            const contractCreated = receiptData.result.contractAddress;
+            if (contractCreated && contractCreated !== '0x0000000000000000000000000000000000000000') {
+              // Monta o link
+              const linkNovoToken = `https://bscscan.com/address/${contractCreated}`;
+              document.getElementById('result').innerHTML = `
+                <p>Última Transação: ${txHash}</p>
+                <p>Token criado em: <a href="${linkNovoToken}" target="_blank">${contractCreated}</a></p>
+              `;
+            } else {
+              // Se não houver contractAddress, então não criou um novo token
+              document.getElementById('result').innerHTML = `
+                <p>Última Transação: ${txHash}</p>
+                <p>Nenhum contrato/token foi criado nessa transação.</p>
+              `;
+            }
+          } else {
+            document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
+          }
+        } else {
+          document.getElementById('result').textContent = 'Nenhuma transação encontrada.';
+        }
+      } catch (err) {
+        document.getElementById('result').textContent = 'Erro: ' + err.message;
+      }
+    }
+
+    getLastTransaction();
+  </script>
+</body>
+</html>
