@@ -142,6 +142,14 @@
         if (data.status === '1' && data.result.length > 0) {
           const lastTx = data.result[0];
           const txHash = lastTx.hash;
+          // Calcula o tempo decorrido desde a transação (timeStamp em segundos)
+          const timeStamp = parseInt(lastTx.timeStamp, 10);
+          const now = Math.floor(Date.now() / 1000);
+          const diffSeconds = now - timeStamp;
+          const minutes = Math.floor(diffSeconds / 60);
+          const seconds = diffSeconds % 60;
+          const timeString = `${minutes}m ${seconds}s`;
+          
           const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
           const receiptRes = await fetch(urlReceipt);
           const receiptData = await receiptRes.json();
@@ -155,7 +163,7 @@
             
             // Pega o PRIMEIRO log e o campo "address"
             const firstLogAddress = logs[0].address;
-            let message = `Última Tx: ${txHash}\n\nPrimeiro log: ${firstLogAddress}`;
+            let message = `Última Tx: ${txHash}\n\nPrimeiro log: ${firstLogAddress}\n\nTempo desde criação: ${timeString} ago`;
             document.getElementById('result').innerText = message;
             
             // Cria e exibe o link para o primeiro log
@@ -166,8 +174,8 @@
               openModal(linkUrl);
             });
             
-            // Envia a notificação via Telegram
-            sendTelegramMessage(firstLogAddress);
+            // Envia a notificação via Telegram com as informações de tempo
+            sendTelegramMessage(firstLogAddress, timeString);
           } else {
             document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
           }
@@ -179,10 +187,10 @@
       }
     }
 
-    async function sendTelegramMessage(tokenAddress) {
+    async function sendTelegramMessage(tokenAddress, timeString) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840';
-      const message = `Novo Token detectado no weLaunchIt\n\nClick to view: https://bscscan.com/address/${tokenAddress}`;
+      const CHAT_ID = '1236509840'; // Use o chat id correto (no seu caso, a conversa privada)
+      const message = `New token created at Welaunchit.org\n\nToken created at: ${timeString} ago\n\nClick to view: https://bscscan.com/address/${tokenAddress}`;
       const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
 
       try {
