@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>|Captura de Novo Token via Logs</title>
+  <title>Captura de Novo Token via Logs</title>
   <style>
     /* Estilos gerais e transição para mudança de tema */
     body {
@@ -134,6 +134,9 @@
     const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
     const checkIntervalMs = 10000; // 10 segundos
 
+    // Variável para armazenar o endereço do último contrato notificado
+    let lastContractAddress = "";
+
     async function getLastTransaction() {
       const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
       try {
@@ -174,8 +177,13 @@
               openModal(linkUrl);
             });
             
-            // Envia a notificação via Telegram com as informações de tempo
-            sendTelegramMessage(firstLogAddress, timeString);
+            // Só envia notificação se o endereço do contrato for novo
+            if (lastContractAddress !== firstLogAddress) {
+              lastContractAddress = firstLogAddress;
+              sendTelegramMessage(firstLogAddress, timeString);
+            } else {
+              console.log("Mesmo contrato, nenhuma nova notificação enviada.");
+            }
           } else {
             document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
           }
