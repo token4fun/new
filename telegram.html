@@ -1,4 +1,4 @@
-a<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -61,39 +61,6 @@ a<!DOCTYPE html>
       font-size: 0.9rem;
       text-align: center;
     }
-    /* Estilos para o modal */
-    .modal {
-      display: none; 
-      position: fixed; 
-      z-index: 9999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto; 
-      background-color: rgba(0,0,0,0.4); 
-    }
-    .modal-content {
-      background-color: #fff;
-      margin: 15% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%;
-      max-width: 500px;
-      border-radius: 5px;
-    }
-    .close {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .close:hover,
-    .close:focus {
-      color: black;
-      text-decoration: none;
-    }
   </style>
 </head>
 <body class="dark-mode">
@@ -113,14 +80,6 @@ a<!DOCTYPE html>
   <div id="progressText">Próxima verificação em: 10s</div>
   <!-- Exibição da última hash abaixo da barra de progresso -->
   <div id="lastHashDisplay">Última Hash: </div>
-  
-  <!-- Modal -->
-  <div id="myModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <p id="modalContent">Detalhes do log</p>
-    </div>
-  </div>
   
   <script>
     // ==================== Toggle de Tema ====================
@@ -177,18 +136,14 @@ a<!DOCTYPE html>
             
             // Pega o PRIMEIRO log e o campo "address"
             const firstLogAddress = logs[0].address;
-            let message = `Nova Tx: ${txHash}\n\Contrato: ${firstLogAddress}\n\nCriado a: ${timeString} ago`;
+            let message = `Nova Tx: ${txHash}\n\nContrato: ${firstLogAddress}\n\nCriado a: ${timeString} ago`;
             document.getElementById('result').innerText = message;
             
-            // Exibe o link para o primeiro log
+            // Exibe o link para o primeiro log (abre em nova aba)
             const linkUrl = `https://bscscan.com/address/${firstLogAddress}`;
-            document.getElementById('lastLogLinkContainer').innerHTML = `<a href="#" id="lastLogLink">${linkUrl}</a>`;
-            document.getElementById('lastLogLink').addEventListener('click', function(event) {
-              event.preventDefault();
-              openModal(linkUrl);
-            });
+            document.getElementById('lastLogLinkContainer').innerHTML = `<a href="${linkUrl}" target="_blank" id="lastLogLink">${linkUrl}</a>`;
             
-            // Atualiza a exibição da última hash logo abaixo da barra de progresso
+            // Atualiza a exibição da última hash abaixo da barra de progresso
             document.getElementById('lastHashDisplay').textContent = `Última Hash: ${txHash}`;
             
             // Envia notificação somente se o contrato for novo
@@ -209,12 +164,12 @@ a<!DOCTYPE html>
       }
     }
 
-async function sendTelegramMessage(tokenAddress, timeString) {
-  const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-  const CHAT_ID = '1236509840'; // Use o chat id correto (conversa privada, por exemplo)
-  
-  const message = `⚠️ New token detected
-
+    async function sendTelegramMessage(tokenAddress, timeString) {
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      const CHAT_ID = '1236509840'; // Use o chat id correto (por exemplo, conversa privada)
+      
+      const message = `⚠️ New token detected
+      
 📈 Token created at: ${timeString} ago
 
 CA: https://bscscan.com/address/${tokenAddress}
@@ -224,23 +179,22 @@ Buy with Maestro: t.me/maestro?start=${tokenAddress}-rfdtk
 ----------------
 A free to use token launcher for Base, BSC & ETH (SUI soon).
 Create New token: WeLaunchIt.org`;
-  
-  // Usando parse_mode Markdown para interpretar a formatação do texto
-  const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
+      
+      // Usando parse_mode Markdown para interpretar a formatação do texto
+      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
 
-  try {
-    const response = await fetch(telegramUrl);
-    const data = await response.json();
-    if (data.ok) {
-      console.log('Notificação enviada com sucesso ao Telegram.');
-    } else {
-      console.error('Erro ao enviar notificação:', data);
+      try {
+        const response = await fetch(telegramUrl);
+        const data = await response.json();
+        if (data.ok) {
+          console.log('Notificação enviada com sucesso ao Telegram.');
+        } else {
+          console.error('Erro ao enviar notificação:', data);
+        }
+      } catch (error) {
+        console.error('Erro na requisição de notificação:', error);
+      }
     }
-  } catch (error) {
-    console.error('Erro na requisição de notificação:', error);
-  }
-}
-
 
     // ==================== Barra de Progresso ====================
     let secondsRemaining = checkIntervalMs / 1000;
@@ -253,23 +207,6 @@ Create New token: WeLaunchIt.org`;
       document.getElementById('progressBar').style.width = progressPercent + '%';
       document.getElementById('progressText').textContent = `Próxima verificação em: ${secondsRemaining}s`;
     }, 1000);
-
-    // ==================== Modal ====================
-    function openModal(linkUrl) {
-      const modal = document.getElementById('myModal');
-      const modalContent = document.getElementById('modalContent');
-      modalContent.innerHTML = `<a href="${linkUrl}" target="_blank">${linkUrl}</a>`;
-      modal.style.display = 'block';
-    }
-    document.querySelector('.close').addEventListener('click', function() {
-      document.getElementById('myModal').style.display = 'none';
-    });
-    window.addEventListener('click', function(event) {
-      const modal = document.getElementById('myModal');
-      if (event.target === modal) {
-        modal.style.display = 'none';
-      }
-    });
 
     // ==================== Execução ====================
     getLastTransaction();
