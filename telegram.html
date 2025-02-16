@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Captura de Novo Token via Logs</title>
+</head>
+<body>
+  <h1>Captura de Novo Token</h1>
+  <div id="result">Carregando...</div>
+
+  <script>
+    const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
+    // Endereço que você está monitorando
+    const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
+
+    async function getLastTransaction() {
+      // 1) Buscar a última transação (txlist) em ordem decrescente
+      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
+
+      try {
+        const response = await fetch(urlTxList);
+        const data = await response.json();
+        if (data.status === '1' && data.result.length > 0) {
+          const lastTx = data.result[0];
+          const txHash = lastTx.hash;
+
+          // 2) Obter o recibo da transação (logs)
+          const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
+          const receiptRes = await fetch(urlReceipt);
+          const receiptData = await receiptRes.json();
+
+          if (receiptData.result) {
+            const logs = receiptData.result.logs;
+            if (!logs || logs.length === 0) {
+              document.getElementById('result').textContent = 'Sem logs na transação.';
+              return;
+            }
+            
+            // Pega o PRIMEIRO log e o campo address dele
+            const firstLogAddress = logs[0].address;
+
+            // Exibe na tela para conferência
+            let message = `Última Tx: ${txHash}\n\nPrimeiro log: ${firstLogAddress}`;
+            document.getElementById('result').innerText = message;
+
+            // Envia para o Telegram
+            sendTelegramMessage(firstLogAddress);
+          } else {
+            document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
+          }
+        } else {
+          document.getElementById('result').textContent = 'Nenhuma transação encontrada.';
+        }
+      } catch (error) {
+        document.getElementById('result').textContent = 'Erro: ' + error.message;
+      }
+    }
+
+    // Função para enviar a mensagem ao bot do Telegram
+    async function sendTelegramMessage(tokenAddress) {
+      const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
+      const CHAT_ID = 'YOUR_CHAT_ID_HERE';
+
+      // Mensagem que será enviada
+      const message = `Novo Token detectado no weLaunchIt\n\nClick to view: https://bscscan.com/address/${tokenAddress}`;
+
+      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
+
+      try {
+        const response = await fetch(telegramUrl);
+        const data = await response.json();
+        if (data.ok) {
+          console.log('Notificação enviada com sucesso ao Telegram.');
+        } else {
+          console.error('Erro ao enviar notificação:', data);
+        }
+      } catch (error) {
+        console.error('Erro na requisição de notificação:', error);
+      }
+    }
+
+    // Inicia a verificação
+    getLastTransaction();
+  </script>
+</body>
+</html>
