@@ -209,24 +209,42 @@ a<!DOCTYPE html>
       }
     }
 
-    async function sendTelegramMessage(tokenAddress, timeString) {
-      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840'; // Use o chat id correto (conversa privada, por exemplo)
-      const message = `New token created at Welaunchit.org\n\nToken created at: ${timeString} ago\n\nClick to view: https://bscscan.com/address/${tokenAddress}`;
-      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
+async function sendTelegramMessage(tokenAddress, timeString) {
+  const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+  const CHAT_ID = '1236509840'; // Use o chat id correto (conversa privada, por exemplo)
+  
+  const message = `⚠️ New token detected
 
-      try {
-        const response = await fetch(telegramUrl);
-        const data = await response.json();
-        if (data.ok) {
-          console.log('Notificação enviada com sucesso ao Telegram.');
-        } else {
-          console.error('Erro ao enviar notificação:', data);
-        }
-      } catch (error) {
-        console.error('Erro na requisição de notificação:', error);
-      }
+📈 Token created at: ${timeString} ago
+
+Click to view: https://bscscan.com/address/${tokenAddress}
+
+[Buy with Maestro](buttonurl://t.me/maestro?start=${tokenAddress}-rfdtk)
+
+----------------
+A free to use token launcher for Base, BSC & ETH (SUI soon).
+For more info contact @KaderV2
+
+Follow @WLItokens to see launches from our deployer
+
+Create New token: WeLaunchIt.org`;
+  
+  // Usando parse_mode Markdown para interpretar a formatação do texto
+  const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
+
+  try {
+    const response = await fetch(telegramUrl);
+    const data = await response.json();
+    if (data.ok) {
+      console.log('Notificação enviada com sucesso ao Telegram.');
+    } else {
+      console.error('Erro ao enviar notificação:', data);
     }
+  } catch (error) {
+    console.error('Erro na requisição de notificação:', error);
+  }
+}
+
 
     // ==================== Barra de Progresso ====================
     let secondsRemaining = checkIntervalMs / 1000;
