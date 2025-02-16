@@ -79,8 +79,10 @@
       }
     }
 
-    // Inicia a verificação
+    // Executa a verificação imediatamente ao carregar a página
     getLastTransaction();
+    // Executa a verificação a cada 10 segundos (10000 ms)
+    setInterval(getLastTransaction, 10000);
   </script>
 </body>
 </html>
