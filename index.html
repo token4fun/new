@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Monitoramento de Novo Token</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+    }
+    #result {
+      color: #00ffff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Monitoramento de Novo Token</h1>
+  <ul>
+    <li>
+      <strong>Nova Transação:</strong>
+      <span id="result">Aguardando...</span>
+    </li>
+  </ul>
+
+  <script>
+    let lastHash = null; // Guarda a última hash conhecida
+
+    async function checkNewBurn() {
+      const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
+      // Novo contrato a ser monitorado:
+      const contractAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
+      
+      // URL para buscar a última transação do contrato
+      const url = `https://api.bscscan.com/api?module=account&action=tokentx&contractaddress=${contractAddress}&page=1&offset=1&sort=desc&apikey=${API_KEY}`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === '1' && data.result.length > 0) {
+          const currentTx = data.result[0];
+          const currentHash = currentTx.hash;
+
+          // Se já houver uma hash armazenada e ela for diferente da atual, envia notificação
+          if (lastHash && lastHash !== currentHash) {
+            sendTelegramNotification(currentHash);
+          }
+
+          // Armazena a hash atual para a próxima verificação
+          lastHash = currentHash;
+
+          // Atualiza a interface exibindo a hash atual
+          document.getElementById('result').innerHTML = currentHash;
+        } else {
+          document.getElementById('result').innerHTML = 'Erro ao ler a transação. [F5] para recarregar.';
+        }
+      } catch (error) {
+        document.getElementById('result').innerHTML = 'Erro: ' + error.message;
+      }
+    }
+
+    async function getTxDetails(txHash) {
+      const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
+      // Usamos o endpoint para obter o recibo da transação, que pode conter o endereço do contrato criado
+      const url = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.result; // Se a transação criou um contrato, data.result.contractAddress estará preenchido
+      } catch (error) {
+        console.error('Erro ao obter detalhes da transação:', error);
+        return null;
+      }
+    }
+
+    async function sendTelegramNotification(newHash) {
+      // Primeiro, obtém os detalhes da transação para verificar se houve criação de contrato (novo token)
+      const txDetails = await getTxDetails(newHash);
+      let message = '';
+
+      if (txDetails && txDetails.contractAddress) {
+        // Se houver um endereço de contrato, presume-se que um novo token foi criado
+        message = `Novo Token Criado!\nAção: Contrato Criado\nLink do Token: https://bscscan.com/token/${txDetails.contractAddress}`;
+      } else {
+        // Caso contrário, envia uma mensagem padrão com a hash da transação
+        message = `Nova transação detectada, mas nenhum novo token foi identificado.\nHash: ${newHash}`;
+      }
+
+      // Substitua pelos seus dados do bot do Telegram
+      const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
+      const CHAT_ID = 'YOUR_CHAT_ID_HERE';
+      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
+
+      try {
+        const response = await fetch(telegramUrl);
+        const data = await response.json();
+        if (data.ok) {
+          console.log('Notificação enviada com sucesso.');
+        } else {
+          console.error('Erro ao enviar notificação:', data);
+        }
+      } catch (error) {
+        console.error('Erro na requisição de notificação:', error);
+      }
+    }
+
+    // Executa a verificação a cada 5 minutos (300000 ms)
+    setInterval(checkNewBurn, 300000);
+    // Executa imediatamente ao carregar a página
+    checkNewBurn();
+  </script>
+</body>
+</html>
