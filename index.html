@@ -1,49 +1,53 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Última Transação do Contrato</title>
+  <meta charset="UTF-8" />
+  <title>Teste de Envio para Bot do Telegram</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+    }
+    button {
+      font-size: 1rem;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <h1>Última Transação</h1>
-  <div id="result">Carregando...</div>
-
+  <h1>Teste de Envio para Bot do Telegram</h1>
+  <p>Clique no botão abaixo para enviar uma mensagem de teste para o bot do Telegram.</p>
+  <button id="sendTest">Enviar Mensagem de Teste</button>
+  
   <script>
-    async function getLastTransaction() {
-      // Substitua pela sua própria chave de API
-      const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
-      // Endereço do contrato a ser consultado
-      const contractAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
-
-      // Endpoint para obter as transações (txlist) em ordem decrescente
-      const url = `https://api.bscscan.com/api?module=account&action=txlist&address=${contractAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
+    async function sendTestMessage() {
+      // Substitua pelo seu bot token e chat id (obtido via getUpdates)
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      // Usando o chat id que você obteve para sua conversa privada: 1236509840
+      const CHAT_ID = '1236509840';
+      
+      // Mensagem de teste com as informações do index.html
+      const message = `Novo Token detectado no weLaunchIt\n\nClick to view: https://bscscan.com/address/0xc808785cc14b489c5b3e92206f7c11a13cbf1f12`;
+      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
 
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Erro na requisição: ' + response.status);
-        }
-
+        const response = await fetch(telegramUrl);
         const data = await response.json();
-        /*
-          Se data.status === '1' e há elementos em data.result,
-          a primeira transação (data.result[0]) é a mais recente.
-        */
-        if (data.status === '1' && data.result.length > 0) {
-          const lastTx = data.result[0];
-          const txHash = lastTx.hash;
-          // Exibe a hash da transação mais recente
-          document.getElementById('result').textContent = txHash;
+        if (data.ok) {
+          console.log('Mensagem de teste enviada com sucesso ao Telegram.');
+          alert('Mensagem de teste enviada com sucesso!');
         } else {
-          document.getElementById('result').textContent = 'Nenhuma transação encontrada ou erro na resposta da API.';
+          console.error('Erro ao enviar mensagem de teste:', data);
+          alert('Erro ao enviar mensagem de teste. Confira o console.');
         }
       } catch (error) {
-        document.getElementById('result').textContent = 'Erro: ' + error.message;
+        console.error('Erro na requisição de teste:', error);
+        alert('Erro na requisição de teste. Confira o console.');
       }
     }
-
-    // Chama a função assim que a página é carregada
-    getLastTransaction();
+    
+    document.getElementById("sendTest").addEventListener("click", sendTestMessage);
   </script>
 </body>
 </html>
