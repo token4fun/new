@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>|Captura de Novo Token via Logs</title>
+  <title>Captura de Novo Token via Logs</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -21,8 +21,9 @@
       border-radius: 5px;
       overflow: hidden;
       height: 20px;
+      margin-top: 20px;
     }
-    /* Barra de progresso em si */
+    /* Barra de progresso */
     #progressBar {
       width: 0%;
       height: 100%;
@@ -35,37 +36,76 @@
       font-size: 0.9rem;
       color: #333;
     }
+    /* Modal Styles */
+    .modal {
+      display: none; 
+      position: fixed; 
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto; 
+      background-color: rgba(0,0,0,0.4); 
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 5px;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
   <h1>Captura de Novo Token</h1>
   <div id="result">Carregando...</div>
   
-  <!-- Barra de progresso -->
+  <!-- Container para o link do último log -->
+  <div id="lastLogLinkContainer"></div>
+  
+  <!-- Barra de Progresso -->
   <div id="progressContainer">
     <div id="progressBar"></div>
   </div>
   <div id="progressText">Próxima verificação em: 10s</div>
-
+  
+  <!-- Modal -->
+  <div id="myModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <p id="modalContent">Detalhes do log</p>
+    </div>
+  </div>
+  
   <script>
     const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
-    // Endereço que você está monitorando
+    // Endereço que está sendo monitorado
     const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
-    // Intervalo de verificação em milissegundos
-    const checkIntervalMs = 10000;
-    
-    async function getLastTransaction() {
-      // 1) Buscar a última transação (txlist) em ordem decrescente
-      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
+    const checkIntervalMs = 10000; // 10 segundos
 
+    async function getLastTransaction() {
+      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
       try {
         const response = await fetch(urlTxList);
         const data = await response.json();
         if (data.status === '1' && data.result.length > 0) {
           const lastTx = data.result[0];
           const txHash = lastTx.hash;
-
-          // 2) Obter o recibo da transação (logs)
           const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
           const receiptRes = await fetch(urlReceipt);
           const receiptData = await receiptRes.json();
@@ -76,15 +116,20 @@
               document.getElementById('result').textContent = 'Sem logs na transação.';
               return;
             }
-            
-            // Pega o PRIMEIRO log e o campo address dele
+            // Pega o PRIMEIRO log e o campo "address" dele
             const firstLogAddress = logs[0].address;
-
-            // Exibe na tela para conferência
             let message = `Última Tx: ${txHash}\n\nPrimeiro log: ${firstLogAddress}`;
             document.getElementById('result').innerText = message;
-
-            // Envia para o Telegram
+            
+            // Cria e exibe o link para o último log
+            const linkUrl = `https://bscscan.com/address/${firstLogAddress}`;
+            document.getElementById('lastLogLinkContainer').innerHTML = `<a href="#" id="lastLogLink">${linkUrl}</a>`;
+            document.getElementById('lastLogLink').addEventListener('click', function(event) {
+              event.preventDefault();
+              openModal(linkUrl);
+            });
+            
+            // Envia a notificação via Telegram
             sendTelegramMessage(firstLogAddress);
           } else {
             document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
@@ -97,12 +142,9 @@
       }
     }
 
-    // Função para enviar a mensagem ao bot do Telegram
     async function sendTelegramMessage(tokenAddress) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '-1001413235185'; // Certifique-se de que o bot esteja no grupo ou na conversa correspondente
-
-      // Mensagem que será enviada
+      const CHAT_ID = '-1001413235185';
       const message = `Novo Token detectado no weLaunchIt\n\nClick to view: https://bscscan.com/address/${tokenAddress}`;
       const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
 
@@ -119,26 +161,42 @@
       }
     }
 
-    // Executa a verificação imediatamente ao carregar a página
-    getLastTransaction();
-
-    // Configura a verificação a cada 10 segundos
-    setInterval(getLastTransaction, checkIntervalMs);
-
-    // Barra de progresso: atualiza a cada 1 segundo
+    // Atualiza a barra de progresso a cada 1 segundo
     let secondsRemaining = checkIntervalMs / 1000;
     setInterval(() => {
       secondsRemaining--;
       if (secondsRemaining <= 0) {
         secondsRemaining = checkIntervalMs / 1000;
       }
-      // Atualiza a largura da barra (em porcentagem)
       const progressPercent = ((checkIntervalMs / 1000 - secondsRemaining) / (checkIntervalMs / 1000)) * 100;
       document.getElementById('progressBar').style.width = progressPercent + '%';
-      // Atualiza o texto da contagem
       document.getElementById('progressText').textContent = `Próxima verificação em: ${secondsRemaining}s`;
     }, 1000);
+
+    // Executa a verificação imediatamente e depois a cada 10 segundos
+    getLastTransaction();
+    setInterval(getLastTransaction, checkIntervalMs);
+
+    // Função para abrir o modal
+    function openModal(linkUrl) {
+      const modal = document.getElementById('myModal');
+      const modalContent = document.getElementById('modalContent');
+      modalContent.innerHTML = `<a href="${linkUrl}" target="_blank">${linkUrl}</a>`;
+      modal.style.display = 'block';
+    }
+
+    // Fechar modal ao clicar no "x"
+    document.querySelector('.close').addEventListener('click', function() {
+      document.getElementById('myModal').style.display = 'none';
+    });
+
+    // Fechar modal ao clicar fora do conteúdo
+    window.addEventListener('click', function(event) {
+      const modal = document.getElementById('myModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
   </script>
 </body>
 </html>
-v
