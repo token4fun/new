@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+a<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -55,6 +55,12 @@
       margin-top: 5px;
       font-size: 0.9rem;
     }
+    /* Exibição da última hash */
+    #lastHashDisplay {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
     /* Estilos para o modal */
     .modal {
       display: none; 
@@ -97,7 +103,7 @@
   <h1>Captura de Novo Token</h1>
   <div id="result">Carregando...</div>
   
-  <!-- Container para o link do último log -->
+  <!-- Container para o link do primeiro log -->
   <div id="lastLogLinkContainer"></div>
   
   <!-- Barra de Progresso -->
@@ -105,6 +111,8 @@
     <div id="progressBar"></div>
   </div>
   <div id="progressText">Próxima verificação em: 10s</div>
+  <!-- Exibição da última hash abaixo da barra de progresso -->
+  <div id="lastHashDisplay">Última Hash: </div>
   
   <!-- Modal -->
   <div id="myModal" class="modal">
@@ -134,8 +142,10 @@
     const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
     const checkIntervalMs = 10000; // 10 segundos
 
-    // Variável para armazenar o endereço do último contrato notificado
+    // Variável para armazenar o último endereço de contrato notificado
     let lastContractAddress = "";
+    // Variável para armazenar a última hash obtida
+    let lastTxHash = "";
 
     async function getLastTransaction() {
       const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
@@ -145,6 +155,7 @@
         if (data.status === '1' && data.result.length > 0) {
           const lastTx = data.result[0];
           const txHash = lastTx.hash;
+          lastTxHash = txHash;  // Atualiza a variável global para exibição
           // Calcula o tempo decorrido desde a transação (timeStamp em segundos)
           const timeStamp = parseInt(lastTx.timeStamp, 10);
           const now = Math.floor(Date.now() / 1000);
@@ -169,7 +180,7 @@
             let message = `Última Tx: ${txHash}\n\nPrimeiro log: ${firstLogAddress}\n\nTempo desde criação: ${timeString} ago`;
             document.getElementById('result').innerText = message;
             
-            // Cria e exibe o link para o primeiro log
+            // Exibe o link para o primeiro log
             const linkUrl = `https://bscscan.com/address/${firstLogAddress}`;
             document.getElementById('lastLogLinkContainer').innerHTML = `<a href="#" id="lastLogLink">${linkUrl}</a>`;
             document.getElementById('lastLogLink').addEventListener('click', function(event) {
@@ -177,7 +188,10 @@
               openModal(linkUrl);
             });
             
-            // Só envia notificação se o endereço do contrato for novo
+            // Atualiza a exibição da última hash logo abaixo da barra de progresso
+            document.getElementById('lastHashDisplay').textContent = `Última Hash: ${txHash}`;
+            
+            // Envia notificação somente se o contrato for novo
             if (lastContractAddress !== firstLogAddress) {
               lastContractAddress = firstLogAddress;
               sendTelegramMessage(firstLogAddress, timeString);
@@ -197,7 +211,7 @@
 
     async function sendTelegramMessage(tokenAddress, timeString) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840'; // Use o chat id correto (no seu caso, a conversa privada)
+      const CHAT_ID = '1236509840'; // Use o chat id correto (conversa privada, por exemplo)
       const message = `New token created at Welaunchit.org\n\nToken created at: ${timeString} ago\n\nClick to view: https://bscscan.com/address/${tokenAddress}`;
       const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
 
