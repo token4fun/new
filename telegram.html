@@ -177,7 +177,7 @@ a<!DOCTYPE html>
             
             // Pega o PRIMEIRO log e o campo "address"
             const firstLogAddress = logs[0].address;
-            let message = `Última Tx: ${txHash}\n\nPrimeiro log: ${firstLogAddress}\n\nTempo desde criação: ${timeString} ago`;
+            let message = `Nova Tx: ${txHash}\n\Contrato: ${firstLogAddress}\n\nCriado a: ${timeString} ago`;
             document.getElementById('result').innerText = message;
             
             // Exibe o link para o primeiro log
