@@ -2,60 +2,76 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Última Transação - Contrato Criado</title>
+  <title>Captura de Novo Token via Logs</title>
 </head>
 <body>
-  <h1>Última Transação</h1>
+  <h1>Captura de Novo Token</h1>
   <div id="result">Carregando...</div>
 
   <script>
-    // Sua API Key do BscScan
     const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
-    // Contrato que você está monitorando
-    const contractAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
+    const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803'; // Endereço do contrato ou wallet que você está monitorando
 
     async function getLastTransaction() {
-      // 1. Buscar a última transação usando txlist
-      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${contractAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
-
+      // 1) Pegar a última transação usando txlist
+      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
       try {
         const response = await fetch(urlTxList);
         const data = await response.json();
-        
         if (data.status === '1' && data.result.length > 0) {
-          const lastTx = data.result[0]; // a mais recente
+          const lastTx = data.result[0]; // transação mais recente
           const txHash = lastTx.hash;
-          
-          // 2. Agora buscar o recibo (eth_getTransactionReceipt) para ver se criou um contrato
+
+          // 2) Obter o recibo da transação
           const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
-          const receiptResponse = await fetch(urlReceipt);
-          const receiptData = await receiptResponse.json();
+          const receiptRes = await fetch(urlReceipt);
+          const receiptData = await receiptRes.json();
 
           if (receiptData.result) {
-            // Se for criação de contrato, receiptData.result.contractAddress terá o endereço
-            const contractCreated = receiptData.result.contractAddress;
-            if (contractCreated && contractCreated !== '0x0000000000000000000000000000000000000000') {
-              // Monta o link
-              const linkNovoToken = `https://bscscan.com/address/${contractCreated}`;
-              document.getElementById('result').innerHTML = `
-                <p>Última Transação: ${txHash}</p>
-                <p>Token criado em: <a href="${linkNovoToken}" target="_blank">${contractCreated}</a></p>
-              `;
-            } else {
-              // Se não houver contractAddress, então não criou um novo token
-              document.getElementById('result').innerHTML = `
-                <p>Última Transação: ${txHash}</p>
-                <p>Nenhum contrato/token foi criado nessa transação.</p>
-              `;
+            // 3) Verificar logs em receiptData.result.logs
+            const logs = receiptData.result.logs;
+            if (!logs || logs.length === 0) {
+              document.getElementById('result').textContent = 'Sem logs na transação. Nenhum contrato criado diretamente ou via evento.';
+              return;
             }
+
+            // Exemplo simples: vamos listar todos os endereços que aparecem nos logs
+            let message = `Última Tx: ${txHash}\n\nLogs encontrados:\n`;
+            for (const log of logs) {
+              message += `- Log Address: ${log.address}\n`;
+            }
+
+            // Se você sabe que é um par da PancakeSwap, pode procurar o evento "PairCreated"
+            // O signature do PairCreated é "PairCreated(address,address,address,uint256)"
+            // Keccak256 do nome do evento:
+            // 0x0d3648bd... (você pode checar em https://emn178.github.io/online-tools/keccak_256.html)
+            // Aqui, apenas mostramos de forma simples:
+            const pairCreatedLog = logs.find(l =>
+              // address do contrato-fábrica da PancakeSwap (v1, v2, etc.)
+              // ex.: 0xBCfCcbde45cE874adCB698cC183deBcF17952812 para V1
+              // ou 0xCA143Ce32Fe78f1f7019d7d551a6402fC5350c73 para V2
+              // E se o 1º tópico for o hash do PairCreated.
+              l.topics && l.topics[0]?.startsWith('0x0d3648bd')
+            );
+
+            if (pairCreatedLog) {
+              // O par criado normalmente aparece como "address" no 3º parâmetro do evento
+              // mas a BNBChain passa esse valor nos topics/data. Precisamos decodificar
+              // de forma manual ou usar uma lib (ethers.js, web3.js).
+              // Aqui, sem decode, podemos exibir o log para debug:
+              message += `\n\nPossível evento PairCreated detectado:\n`;
+              message += JSON.stringify(pairCreatedLog, null, 2);
+            }
+
+            document.getElementById('result').innerText = message;
           } else {
             document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
           }
         } else {
           document.getElementById('result').textContent = 'Nenhuma transação encontrada.';
         }
-      } catch (err) {
-        document.getElementById('result').textContent = 'Erro: ' + err.message;
+      } catch (error) {
+        document.getElementById('result').textContent = 'Erro: ' + error.message;
       }
     }
 
