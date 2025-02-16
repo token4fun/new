@@ -2,17 +2,58 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Captura de Novo Token via Logs</title>
+  <title>|Captura de Novo Token via Logs</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+    }
+    #result {
+      margin-bottom: 20px;
+      color: #00ffff;
+      font-weight: bold;
+      white-space: pre-line;
+    }
+    /* Container da barra de progresso */
+    #progressContainer {
+      width: 100%;
+      background-color: #ddd;
+      border-radius: 5px;
+      overflow: hidden;
+      height: 20px;
+    }
+    /* Barra de progresso em si */
+    #progressBar {
+      width: 0%;
+      height: 100%;
+      background-color: #00ffff;
+      transition: width 0.5s;
+    }
+    #progressText {
+      text-align: center;
+      margin-top: 5px;
+      font-size: 0.9rem;
+      color: #333;
+    }
+  </style>
 </head>
 <body>
   <h1>Captura de Novo Token</h1>
   <div id="result">Carregando...</div>
+  
+  <!-- Barra de progresso -->
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
+  <div id="progressText">Próxima verificação em: 10s</div>
 
   <script>
     const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
     // Endereço que você está monitorando
     const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
-
+    // Intervalo de verificação em milissegundos
+    const checkIntervalMs = 10000;
+    
     async function getLastTransaction() {
       // 1) Buscar a última transação (txlist) em ordem decrescente
       const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
@@ -59,11 +100,10 @@
     // Função para enviar a mensagem ao bot do Telegram
     async function sendTelegramMessage(tokenAddress) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '-1001413235185';
+      const CHAT_ID = '-1001413235185'; // Certifique-se de que o bot esteja no grupo ou na conversa correspondente
 
       // Mensagem que será enviada
       const message = `Novo Token detectado no weLaunchIt\n\nClick to view: https://bscscan.com/address/${tokenAddress}`;
-
       const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
 
       try {
@@ -81,8 +121,24 @@
 
     // Executa a verificação imediatamente ao carregar a página
     getLastTransaction();
-    // Executa a verificação a cada 10 segundos (10000 ms)
-    setInterval(getLastTransaction, 10000);
+
+    // Configura a verificação a cada 10 segundos
+    setInterval(getLastTransaction, checkIntervalMs);
+
+    // Barra de progresso: atualiza a cada 1 segundo
+    let secondsRemaining = checkIntervalMs / 1000;
+    setInterval(() => {
+      secondsRemaining--;
+      if (secondsRemaining <= 0) {
+        secondsRemaining = checkIntervalMs / 1000;
+      }
+      // Atualiza a largura da barra (em porcentagem)
+      const progressPercent = ((checkIntervalMs / 1000 - secondsRemaining) / (checkIntervalMs / 1000)) * 100;
+      document.getElementById('progressBar').style.width = progressPercent + '%';
+      // Atualiza o texto da contagem
+      document.getElementById('progressText').textContent = `Próxima verificação em: ${secondsRemaining}s`;
+    }, 1000);
   </script>
 </body>
 </html>
+v
