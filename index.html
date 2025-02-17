@@ -2,52 +2,335 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Teste de Envio para Bot do Telegram</title>
+  <title>Captura de Novo Token via Logs</title>
   <style>
+    /* Estilos gerais e transição para mudança de tema */
     body {
       font-family: Arial, sans-serif;
       margin: 2rem;
+      transition: background-color 0.5s, color 0.5s;
     }
-    button {
-      font-size: 1rem;
-      padding: 10px 20px;
+    /* Modo claro */
+    body.light-mode {
+      background-color: #ffffff;
+      color: #000000;
+    }
+    /* Modo escuro */
+    body.dark-mode {
+      background-color: #000000;
+      color: #ffffff;
+    }
+    /* Botão toggle de tema */
+    .toggle-btn {
+      background: none;
+      border: none;
+      font-size: 2rem;
       cursor: pointer;
+      outline: none;
+      position: fixed;
+      top: 10px;
+      right: 10px;
+    }
+    /* Estilo para o resultado e barra de progresso */
+    #result {
+      margin-bottom: 20px;
+      white-space: pre-line;
+    }
+    #progressContainer {
+      width: 100%;
+      background-color: #ddd;
+      border-radius: 5px;
+      overflow: hidden;
+      height: 20px;
+      margin-top: 20px;
+    }
+    #progressBar {
+      width: 0%;
+      height: 100%;
+      background-color: #00ffff;
+      transition: width 0.5s;
+    }
+    #progressText {
+      text-align: center;
+      margin-top: 5px;
+      font-size: 0.9rem;
+    }
+    /* Exibição da última hash */
+    #lastHashDisplay {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    /* Estilo para o campo de mensagem personalizada */
+    #customMessageContainer {
+      margin-top: 20px;
+      text-align: center;
+    }
+    #customMessage {
+      width: 80%;
+      max-width: 400px;
+      height: 100px;
+      padding: 8px;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    #sendCustomMessage {
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    /* Instrução acima do campo */
+    #customMessageLabel {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      display: block;
     }
   </style>
 </head>
-<body>
-  <h1>Teste de Envio para Bot do Telegram</h1>
-  <p>Clique no botão abaixo para enviar uma mensagem de teste para o bot do Telegram.</p>
-  <button id="sendTest">Enviar Mensagem de Teste</button>
+<body class="dark-mode">
+  <!-- Botão toggle: inicia no modo escuro com emoji de lua -->
+  <button class="toggle-btn" id="toggleThemeBtn">🌙</button>
+
+  <h1>Captura de Novo Token</h1>
+  <div id="result">Carregando...</div>
+  
+  <!-- Container para o link do primeiro log -->
+  <div id="lastLogLinkContainer"></div>
+  
+  <!-- Barra de Progresso -->
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
+  <div id="progressText">Próxima verificação em: 10s</div>
+  
+  <!-- Exibição da última hash abaixo da barra de progresso -->
+  <div id="lastHashDisplay">Última Hash: </div>
+  
+  <!-- Campo para mensagem personalizada -->
+  <div id="customMessageContainer">
+    <label id="customMessageLabel" for="customMessage">
+      Digite no campo abaixo a mensagem que quer enviar para o bot:
+    </label>
+    <textarea id="customMessage" placeholder="Digite sua mensagem aqui"></textarea>
+    <br />
+    <button id="sendCustomMessage">Enviar</button>
+  </div>
   
   <script>
-    async function sendTestMessage() {
-      // Substitua pelo seu bot token e chat id (obtido via getUpdates)
-      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      // Usando o chat id que você obteve para sua conversa privada: 1236509840
-      const CHAT_ID = '1236509840';
-      
-      // Mensagem de teste com as informações do index.html
-      const message = `Novo Token detectado no weLaunchIt\n\nClick to view: https://bscscan.com/address/0xc808785cc14b489c5b3e92206f7c11a13cbf1f12`;
-      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
+    // ==================== Toggle de Tema ====================
+    const toggleBtn = document.getElementById("toggleThemeBtn");
+    toggleBtn.addEventListener("click", function() {
+      document.body.classList.toggle("light-mode");
+      document.body.classList.toggle("dark-mode");
+      if (document.body.classList.contains("dark-mode")) {
+        toggleBtn.textContent = "🌙";
+      } else {
+        toggleBtn.textContent = "☀️";
+      }
+    });
 
+    // ==================== Variáveis Globais ====================
+    const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
+    // Endereço principal a ser monitorado
+    const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
+    const checkIntervalMs = 10000; // 10 segundos
+    let lastContractAddress = "";
+    let lastTxHash = "";
+    let liquidityInterval = null; // Para monitorar o LP do novo token
+
+    // ==================== Monitoramento de Transações na BSC ====================
+    async function getLastTransaction() {
+      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
       try {
-        const response = await fetch(telegramUrl);
+        const response = await fetch(urlTxList);
         const data = await response.json();
-        if (data.ok) {
-          console.log('Mensagem de teste enviada com sucesso ao Telegram.');
-          alert('Mensagem de teste enviada com sucesso!');
+        if (data.status === '1' && data.result.length > 0) {
+          const lastTx = data.result[0];
+          const txHash = lastTx.hash;
+          lastTxHash = txHash;
+          const timeStamp = parseInt(lastTx.timeStamp, 10);
+          const now = Math.floor(Date.now() / 1000);
+          const diffSeconds = now - timeStamp;
+          const minutes = Math.floor(diffSeconds / 60);
+          const seconds = diffSeconds % 60;
+          const timeString = `${minutes}m ${seconds}s`;
+          
+          const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
+          const receiptRes = await fetch(urlReceipt);
+          const receiptData = await receiptRes.json();
+
+          if (receiptData.result) {
+            const logs = receiptData.result.logs;
+            if (!logs || logs.length === 0) {
+              document.getElementById('result').textContent = 'Sem logs na transação.';
+              return;
+            }
+            
+            // Pega o primeiro log (que representa o contrato)
+            const firstLogAddress = logs[0].address;
+            let message = `Nova Tx: ${txHash}\n\nContrato: ${firstLogAddress}\n\nCriado a: ${timeString} ago`;
+            document.getElementById('result').innerText = message;
+            
+            // Exibe o link para o contrato no BSCScan
+            const linkUrl = `https://bscscan.com/address/${firstLogAddress}`;
+            document.getElementById('lastLogLinkContainer').innerHTML = `<a href="${linkUrl}" target="_blank" id="lastLogLink">${linkUrl}</a>`;
+            
+            // Atualiza a exibição da última hash
+            document.getElementById('lastHashDisplay').textContent = `Última Hash: ${txHash}`;
+            
+            // Se for um novo contrato, envia notificação e inicia monitoramento de LP
+            if (lastContractAddress !== firstLogAddress) {
+              lastContractAddress = firstLogAddress;
+              sendTelegramMessage(firstLogAddress, timeString);
+              // Inicia o monitoramento específico do novo token para verificar liquidez
+              startLiquidityMonitoring(firstLogAddress);
+            } else {
+              console.log("Mesmo contrato, nenhuma nova notificação enviada.");
+            }
+          } else {
+            document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
+          }
         } else {
-          console.error('Erro ao enviar mensagem de teste:', data);
-          alert('Erro ao enviar mensagem de teste. Confira o console.');
+          document.getElementById('result').textContent = 'Nenhuma transação encontrada.';
         }
       } catch (error) {
-        console.error('Erro na requisição de teste:', error);
-        alert('Erro na requisição de teste. Confira o console.');
+        document.getElementById('result').textContent = 'Erro: ' + error.message;
       }
     }
-    
-    document.getElementById("sendTest").addEventListener("click", sendTestMessage);
+
+    // ==================== Envio de Notificação para Vários Chat IDs ====================
+    const CHAT_IDS = ['-1002494316606', '1236509840', '-1001413235185', '-4691521492', '-1002103181224'];
+
+    async function sendTelegramMessage(tokenAddress, timeString) {
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      const message = `⚠️ New token created
+      
+📈 Deployed: ${timeString} ago - No LP Yet
+      
+CA: ${tokenAddress}
+      
+Track: [Maestro](https://t.me/maestro?start=${tokenAddress}-rfdtk) | [Sigma](https://t.me/SigmaTrading5_bot?start=x6735144634-${tokenAddress})
+      
+----------------
+A free to use token launcher for Base, BSC & ETH (SUI soon).
+Create New token: WeLaunchIt.org`;
+      
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`Notificação enviada com sucesso para chat ${chatId}.`);
+          } else {
+            console.error(`Erro ao enviar notificação para chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Erro na requisição de notificação para chat ${chatId}:`, error);
+        }
+      }
+    }
+
+    // ==================== Monitoramento de Liquidez (LP) ====================
+    function startLiquidityMonitoring(tokenAddress) {
+      // Se já houver um monitoramento rodando, limpa-o
+      if (liquidityInterval) clearInterval(liquidityInterval);
+      liquidityInterval = setInterval(() => {
+        monitorLiquidity(tokenAddress);
+      }, 10000);
+    }
+
+    async function monitorLiquidity(tokenAddress) {
+      // Consulta as transações do novo token (endereço do contrato)
+      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${tokenAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
+      try {
+        const response = await fetch(urlTxList);
+        const data = await response.json();
+        if (data.status === '1' && data.result.length > 0) {
+          // Verifica se em alguma transação consta "Add Liquidity" no campo "method"
+          const foundLP = data.result.find(tx => tx.method && tx.method.includes("Add Liquidity"));
+          if (foundLP) {
+            // Envia notificação de LP Added e encerra o monitoramento deste token
+            sendTelegramMessageLP(tokenAddress);
+            clearInterval(liquidityInterval);
+            liquidityInterval = null;
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao monitorar liquidez:', error);
+      }
+    }
+
+    async function sendTelegramMessageLP(tokenAddress) {
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      const message = `💰 LP Added 
+      
+CA: ${tokenAddress}
+      
+🎯Buy: [Maestro](https://t.me/maestro?start=${tokenAddress}-rfdtk) | [Sigma](https://t.me/SigmaTrading5_bot?start=x6735144634-${tokenAddress})
+📊 [DV](https://www.dexview.com/bsc/${tokenAddress}) | [DS](https://dexscreener.com/bsc/${tokenAddress}) 
+----------------
+DYOR`;
+      
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`LP notification sent successfully to chat ${chatId}.`);
+          } else {
+            console.error(`Error sending LP notification to chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Error in LP notification request to chat ${chatId}:`, error);
+        }
+      }
+    }
+
+    // ==================== Envio de Mensagem Personalizada ====================
+    async function sendCustomTelegramMessage() {
+      const customText = document.getElementById('customMessage').value;
+      if (!customText) {
+        alert('Por favor, digite uma mensagem.');
+        return;
+      }
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(customText)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`Mensagem personalizada enviada com sucesso para chat ${chatId}.`);
+          } else {
+            console.error(`Erro ao enviar mensagem personalizada para chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Erro na requisição de mensagem personalizada para chat ${chatId}:`, error);
+        }
+      }
+      alert('Mensagem enviada!');
+    }
+
+    // ==================== Barra de Progresso ====================
+    let secondsRemaining = checkIntervalMs / 1000;
+    setInterval(() => {
+      secondsRemaining--;
+      if (secondsRemaining <= 0) {
+        secondsRemaining = checkIntervalMs / 1000;
+      }
+      const progressPercent = ((checkIntervalMs / 1000 - secondsRemaining) / (checkIntervalMs / 1000)) * 100;
+      document.getElementById('progressBar').style.width = progressPercent + '%';
+      document.getElementById('progressText').textContent = `Próxima verificação em: ${secondsRemaining}s`;
+    }, 1000);
+
+    // ==================== Execução ====================
+    getLastTransaction();
+    setInterval(getLastTransaction, checkIntervalMs);
+
+    document.getElementById('sendCustomMessage').addEventListener('click', sendCustomTelegramMessage);
   </script>
 </body>
 </html>
