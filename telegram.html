@@ -61,6 +61,22 @@
       font-size: 0.9rem;
       text-align: center;
     }
+    /* Estilo para o campo de mensagem personalizada */
+    #customMessageContainer {
+      margin-top: 20px;
+      text-align: center;
+    }
+    #customMessage {
+      width: 80%;
+      max-width: 400px;
+      padding: 8px;
+      font-size: 1rem;
+    }
+    #sendCustomMessage {
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body class="dark-mode">
@@ -78,8 +94,15 @@
     <div id="progressBar"></div>
   </div>
   <div id="progressText">Próxima verificação em: 10s</div>
-  <!-- Exibição da última hash abaixo da barra de progresso -->
+  
+  <!-- Exibição da última hash -->
   <div id="lastHashDisplay">Última Hash: </div>
+  
+  <!-- Campo de mensagem personalizada -->
+  <div id="customMessageContainer">
+    <input type="text" id="customMessage" placeholder="Digite sua mensagem aqui" />
+    <button id="sendCustomMessage">Enviar</button>
+  </div>
   
   <script>
     // ==================== Toggle de Tema ====================
@@ -166,16 +189,16 @@
 
     async function sendTelegramMessage(tokenAddress, timeString) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840'; // Use o chat id correto (por exemplo, conversa privada)
+      const CHAT_ID = '1236509840'; // Use o chat id correto (ex.: conversa privada)
       
-      const message = `⚠️ New BSC token detected
+      const message = `⚠️ New token detected
       
-📈 Deployed at: ${timeString} ago
-
+📈 Token created at: ${timeString} ago
+      
 CA: ${tokenAddress}
-
+      
 Buy with [Maestro](https://t.me/maestro?start=${tokenAddress}-rfdtk) | [Maestro Pro](https://t.me/maestropro?start=${tokenAddress}-rfdtk)
-
+      
 ----------------
 A free to use token launcher for Base, BSC & ETH (SUI soon).
 Create New token: WeLaunchIt.org`;
@@ -196,6 +219,31 @@ Create New token: WeLaunchIt.org`;
       }
     }
 
+    // Função para enviar mensagem personalizada do usuário para o Telegram
+    async function sendCustomTelegramMessage() {
+      const customText = document.getElementById('customMessage').value;
+      if (!customText) {
+        alert('Por favor, digite uma mensagem.');
+        return;
+      }
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      const CHAT_ID = '1236509840';
+      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&parse_mode=Markdown&text=${encodeURIComponent(customText)}`;
+      
+      try {
+        const response = await fetch(telegramUrl);
+        const data = await response.json();
+        if (data.ok) {
+          console.log('Mensagem personalizada enviada com sucesso ao Telegram.');
+          alert('Mensagem enviada!');
+        } else {
+          console.error('Erro ao enviar mensagem personalizada:', data);
+        }
+      } catch (error) {
+        console.error('Erro na requisição de mensagem personalizada:', error);
+      }
+    }
+
     // ==================== Barra de Progresso ====================
     let secondsRemaining = checkIntervalMs / 1000;
     setInterval(() => {
@@ -211,6 +259,15 @@ Create New token: WeLaunchIt.org`;
     // ==================== Execução ====================
     getLastTransaction();
     setInterval(getLastTransaction, checkIntervalMs);
+
+    // ==================== Envio de mensagem personalizada ====================
+    document.getElementById('sendCustomMessage').addEventListener('click', sendCustomTelegramMessage);
   </script>
+
+  <!-- Campo para mensagem personalizada -->
+  <div id="customMessageContainer">
+    <input type="text" id="customMessage" placeholder="Digite sua mensagem aqui" />
+    <button id="sendCustomMessage">Enviar</button>
+  </div>
 </body>
 </html>
