@@ -200,10 +200,13 @@
       }
     }
 
+    // ==================== Envio de Notificação para Vários Chat IDs ====================
+    // Defina os chat IDs desejados em um array
+    const CHAT_IDS = ['1236509840', '-1001413235185']; // Exemplo: conversa privada e grupo
+
     async function sendTelegramMessage(tokenAddress, timeString) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840'; // Use o chat id correto (ex.: conversa privada)
-      
+      // Mensagem formatada em Markdown:
       const message = `⚠️ New token detected
       
 📈 Token created at: ${timeString} ago
@@ -216,23 +219,24 @@ Buy with [Maestro](https://t.me/maestro?start=${tokenAddress}-rfdtk) | [Maestro 
 A free to use token launcher for Base, BSC & ETH (SUI soon).
 Create New token: WeLaunchIt.org`;
       
-      // Usando parse_mode Markdown para interpretar a formatação do texto
-      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
-
-      try {
-        const response = await fetch(telegramUrl);
-        const data = await response.json();
-        if (data.ok) {
-          console.log('Notificação enviada com sucesso ao Telegram.');
-        } else {
-          console.error('Erro ao enviar notificação:', data);
+      // Itera pelos chat IDs e envia a mensagem para cada um
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`Notificação enviada com sucesso para chat ${chatId}.`);
+          } else {
+            console.error(`Erro ao enviar notificação para chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Erro na requisição de notificação para chat ${chatId}:`, error);
         }
-      } catch (error) {
-        console.error('Erro na requisição de notificação:', error);
       }
     }
 
-    // Função para enviar mensagem personalizada do usuário para o Telegram
+    // ==================== Envio de Mensagem Personalizada ====================
     async function sendCustomTelegramMessage() {
       const customText = document.getElementById('customMessage').value;
       if (!customText) {
@@ -240,21 +244,22 @@ Create New token: WeLaunchIt.org`;
         return;
       }
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840';
-      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&parse_mode=Markdown&text=${encodeURIComponent(customText)}`;
-      
-      try {
-        const response = await fetch(telegramUrl);
-        const data = await response.json();
-        if (data.ok) {
-          console.log('Mensagem personalizada enviada com sucesso ao Telegram.');
-          alert('Mensagem enviada!');
-        } else {
-          console.error('Erro ao enviar mensagem personalizada:', data);
+      // Envia a mensagem para cada chat ID
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(customText)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`Mensagem personalizada enviada com sucesso para chat ${chatId}.`);
+          } else {
+            console.error(`Erro ao enviar mensagem personalizada para chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Erro na requisição de mensagem personalizada para chat ${chatId}:`, error);
         }
-      } catch (error) {
-        console.error('Erro na requisição de mensagem personalizada:', error);
       }
+      alert('Mensagem enviada!');
     }
 
     // ==================== Barra de Progresso ====================
@@ -273,7 +278,7 @@ Create New token: WeLaunchIt.org`;
     getLastTransaction();
     setInterval(getLastTransaction, checkIntervalMs);
 
-    // ==================== Envio de mensagem personalizada ====================
+    // ==================== Envio de mensagem personalizada (botão) ====================
     document.getElementById('sendCustomMessage').addEventListener('click', sendCustomTelegramMessage);
   </script>
 </body>
