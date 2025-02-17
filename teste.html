@@ -2,80 +2,119 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Captura de Novo Token via Logs</title>
+  <title>Enviar Mensagem para o Bot</title>
+  <style>
+    /* Basic styles and theme transitions */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      transition: background-color 0.5s, color 0.5s;
+      background-color: #000;
+      color: #fff;
+    }
+    body.light-mode {
+      background-color: #fff;
+      color: #000;
+    }
+    /* Theme toggle button */
+    .toggle-btn {
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      outline: none;
+      position: fixed;
+      top: 10px;
+      right: 10px;
+    }
+    /* Container for custom message */
+    #customMessageContainer {
+      margin-top: 40px;
+      text-align: center;
+    }
+    #customMessageLabel {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      display: block;
+    }
+    #customMessage {
+      width: 80%;
+      max-width: 400px;
+      height: 100px;
+      padding: 8px;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    #sendCustomMessage {
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
 </head>
-<body>
-  <h1>Captura de Novo Token</h1>
-  <div id="result">Carregando...</div>
+<body class="dark-mode">
+  <!-- Theme toggle button -->
+  <button class="toggle-btn" id="toggleThemeBtn">🌙</button>
 
+  <h1>Enviar Mensagem para o Bot</h1>
+  
+  <!-- Instruction and custom message field -->
+  <div id="customMessageContainer">
+    <label id="customMessageLabel" for="customMessage">
+      Digite no campo abaixo a mensagem que quer enviar para o bot:
+    </label>
+    <textarea id="customMessage" placeholder="Digite sua mensagem aqui"></textarea>
+    <br />
+    <button id="sendCustomMessage">Enviar</button>
+  </div>
+  
   <script>
-    const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
-    const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803'; // Endereço do contrato ou wallet que você está monitorando
-
-    async function getLastTransaction() {
-      // 1) Pegar a última transação usando txlist
-      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
-      try {
-        const response = await fetch(urlTxList);
-        const data = await response.json();
-        if (data.status === '1' && data.result.length > 0) {
-          const lastTx = data.result[0]; // transação mais recente
-          const txHash = lastTx.hash;
-
-          // 2) Obter o recibo da transação
-          const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
-          const receiptRes = await fetch(urlReceipt);
-          const receiptData = await receiptRes.json();
-
-          if (receiptData.result) {
-            // 3) Verificar logs em receiptData.result.logs
-            const logs = receiptData.result.logs;
-            if (!logs || logs.length === 0) {
-              document.getElementById('result').textContent = 'Sem logs na transação. Nenhum contrato criado diretamente ou via evento.';
-              return;
-            }
-
-            // Exemplo simples: vamos listar todos os endereços que aparecem nos logs
-            let message = `Última Tx: ${txHash}\n\nLogs encontrados:\n`;
-            for (const log of logs) {
-              message += `- Log Address: ${log.address}\n`;
-            }
-
-            // Se você sabe que é um par da PancakeSwap, pode procurar o evento "PairCreated"
-            // O signature do PairCreated é "PairCreated(address,address,address,uint256)"
-            // Keccak256 do nome do evento:
-            // 0x0d3648bd... (você pode checar em https://emn178.github.io/online-tools/keccak_256.html)
-            // Aqui, apenas mostramos de forma simples:
-            const pairCreatedLog = logs.find(l =>
-              // address do contrato-fábrica da PancakeSwap (v1, v2, etc.)
-              // ex.: 0xBCfCcbde45cE874adCB698cC183deBcF17952812 para V1
-              // ou 0xCA143Ce32Fe78f1f7019d7d551a6402fC5350c73 para V2
-              // E se o 1º tópico for o hash do PairCreated.
-              l.topics && l.topics[0]?.startsWith('0x0d3648bd')
-            );
-
-            if (pairCreatedLog) {
-              // O par criado normalmente aparece como "address" no 3º parâmetro do evento
-              // mas a BNBChain passa esse valor nos topics/data. Precisamos decodificar
-              // de forma manual ou usar uma lib (ethers.js, web3.js).
-              // Aqui, sem decode, podemos exibir o log para debug:
-              message += `\n\nPossível evento PairCreated detectado:\n`;
-              message += JSON.stringify(pairCreatedLog, null, 2);
-            }
-
-            document.getElementById('result').innerText = message;
-          } else {
-            document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
-          }
-        } else {
-          document.getElementById('result').textContent = 'Nenhuma transação encontrada.';
-        }
-      } catch (error) {
-        document.getElementById('result').textContent = 'Erro: ' + error.message;
+    // Toggle Theme functionality
+    const toggleBtn = document.getElementById("toggleThemeBtn");
+    toggleBtn.addEventListener("click", function() {
+      document.body.classList.toggle("light-mode");
+      document.body.classList.toggle("dark-mode");
+      // Update toggle button emoji based on theme
+      if (document.body.classList.contains("dark-mode")) {
+        toggleBtn.textContent = "🌙";
+      } else {
+        toggleBtn.textContent = "☀️";
       }
+    });
+
+    // Function to send the custom message to Telegram
+    async function sendCustomTelegramMessage() {
+      const customText = document.getElementById('customMessage').value;
+      if (!customText) {
+        alert('Por favor, digite uma mensagem.');
+        return;
+      }
+      // Bot token (use environment variables in production)
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      // Define your chat IDs in an array
+      const CHAT_IDS = ['-1002494316606', '1236509840', '-1001413235185', '-4691521492', '-1002103181224'];
+      
+      // Send the message to each chat ID
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(customText)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`Mensagem personalizada enviada com sucesso para chat ${chatId}.`);
+          } else {
+            console.error(`Erro ao enviar mensagem personalizada para chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Erro na requisição de mensagem personalizada para chat ${chatId}:`, error);
+        }
+      }
+      alert('Mensagem enviada!');
     }
 
-    getLastTransaction();
+    // Add event listener for the custom message send button
+    document.getElementById('sendCustomMessage').addEventListener('click', sendCustomTelegramMessage);
   </script>
 </body>
 </html>
