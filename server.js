@@ -4,15 +4,20 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static files from the "public" folder
+// Serve os arquivos estáticos da pasta "public"
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Default route: serve index.html
+// Rota padrão: serve index.html
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Start the server
+// Rota para telegram.html
+app.get('/telegram', (req, res) => {
+  res.sendFile(path.join(__dirname, 'telegram.html'));
+});
+
+// Inicia o servidor
 app.listen(PORT, () => {
   console.log(`Express server running on port ${PORT}`);
 });
