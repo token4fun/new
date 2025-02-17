@@ -118,107 +118,96 @@
   </div>
   
   <script>
-  // ==================== Toggle de Tema ====================
-  const toggleBtn = document.getElementById("toggleThemeBtn");
-  toggleBtn.addEventListener("click", function() {
-    document.body.classList.toggle("light-mode");
-    document.body.classList.toggle("dark-mode");
-    // Atualiza o emoji do botão: se estiver em dark-mode, mostra a lua; se light-mode, mostra o sol
-    if (document.body.classList.contains("dark-mode")) {
-      toggleBtn.textContent = "🌙";
-    } else {
-      toggleBtn.textContent = "☀️";
-    }
-  });
-
-  // ==================== Carregar CHAT_IDS de registered_chats.json ====================
-  let CHAT_IDS = [];
-  fetch('registered_chats.json')
-    .then(response => response.json())
-    .then(data => {
-      CHAT_IDS = data;
-      console.log("Chat IDs loaded:", CHAT_IDS);
-    })
-    .catch(error => {
-      console.error("Erro ao carregar registered_chats.json:", error);
-      // Optionally, set default chat IDs in case of error:
-      CHAT_IDS = ['1236509840', '-1001413235185', '-4691521492'];
+    // ==================== Toggle de Tema ====================
+    const toggleBtn = document.getElementById("toggleThemeBtn");
+    toggleBtn.addEventListener("click", function() {
+      document.body.classList.toggle("light-mode");
+      document.body.classList.toggle("dark-mode");
+      // Atualiza o emoji do botão: se estiver em dark-mode, mostra a lua; se light-mode, mostra o sol
+      if (document.body.classList.contains("dark-mode")) {
+        toggleBtn.textContent = "🌙";
+      } else {
+        toggleBtn.textContent = "☀️";
+      }
     });
 
-  // ==================== Monitoramento de Transações ====================
-  const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
-  // Endereço monitorado
-  const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
-  const checkIntervalMs = 10000; // 10 segundos
+    // ==================== Monitoramento de Transações ====================
+    const API_KEY = 'NABPG1J8DPTD6NMNU4WZIT4GCB258666UQ';
+    // Endereço monitorado
+    const monitoredAddress = '0xcc89f132e9cdd6e88fa435c69ef5e805267bf803';
+    const checkIntervalMs = 10000; // 10 segundos
 
-  // Variável para armazenar o último endereço de contrato notificado
-  let lastContractAddress = "";
-  // Variável para armazenar a última hash obtida
-  let lastTxHash = "";
+    // Variável para armazenar o último endereço de contrato notificado
+    let lastContractAddress = "";
+    // Variável para armazenar a última hash obtida
+    let lastTxHash = "";
 
-  async function getLastTransaction() {
-    const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
-    try {
-      const response = await fetch(urlTxList);
-      const data = await response.json();
-      if (data.status === '1' && data.result.length > 0) {
-        const lastTx = data.result[0];
-        const txHash = lastTx.hash;
-        lastTxHash = txHash;  // Atualiza a variável global para exibição
-        // Calcula o tempo decorrido desde a transação (timeStamp em segundos)
-        const timeStamp = parseInt(lastTx.timeStamp, 10);
-        const now = Math.floor(Date.now() / 1000);
-        const diffSeconds = now - timeStamp;
-        const minutes = Math.floor(diffSeconds / 60);
-        const seconds = diffSeconds % 60;
-        const timeString = `${minutes}m ${seconds}s`;
-        
-        const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
-        const receiptRes = await fetch(urlReceipt);
-        const receiptData = await receiptRes.json();
+    async function getLastTransaction() {
+      const urlTxList = `https://api.bscscan.com/api?module=account&action=txlist&address=${monitoredAddress}&startblock=1&endblock=99999999&sort=desc&apikey=${API_KEY}`;
+      try {
+        const response = await fetch(urlTxList);
+        const data = await response.json();
+        if (data.status === '1' && data.result.length > 0) {
+          const lastTx = data.result[0];
+          const txHash = lastTx.hash;
+          lastTxHash = txHash;  // Atualiza a variável global para exibição
+          // Calcula o tempo decorrido desde a transação (timeStamp em segundos)
+          const timeStamp = parseInt(lastTx.timeStamp, 10);
+          const now = Math.floor(Date.now() / 1000);
+          const diffSeconds = now - timeStamp;
+          const minutes = Math.floor(diffSeconds / 60);
+          const seconds = diffSeconds % 60;
+          const timeString = `${minutes}m ${seconds}s`;
+          
+          const urlReceipt = `https://api.bscscan.com/api?module=proxy&action=eth_getTransactionReceipt&txhash=${txHash}&apikey=${API_KEY}`;
+          const receiptRes = await fetch(urlReceipt);
+          const receiptData = await receiptRes.json();
 
-        if (receiptData.result) {
-          const logs = receiptData.result.logs;
-          if (!logs || logs.length === 0) {
-            document.getElementById('result').textContent = 'Sem logs na transação.';
-            return;
-          }
-          
-          // Pega o PRIMEIRO log e o campo "address"
-          const firstLogAddress = logs[0].address;
-          let message = `Nova Tx: ${txHash}\n\nContrato: ${firstLogAddress}\n\nCriado a: ${timeString} ago`;
-          document.getElementById('result').innerText = message;
-          
-          // Exibe o link para o primeiro log (abre em nova aba)
-          const linkUrl = `https://bscscan.com/address/${firstLogAddress}`;
-          document.getElementById('lastLogLinkContainer').innerHTML = `<a href="${linkUrl}" target="_blank" id="lastLogLink">${linkUrl}</a>`;
-          
-          // Atualiza a exibição da última hash abaixo da barra de progresso
-          document.getElementById('lastHashDisplay').textContent = `Última Hash: ${txHash}`;
-          
-          // Envia notificação somente se o contrato for novo
-          if (lastContractAddress !== firstLogAddress) {
-            lastContractAddress = firstLogAddress;
-            sendTelegramMessage(firstLogAddress, timeString);
+          if (receiptData.result) {
+            const logs = receiptData.result.logs;
+            if (!logs || logs.length === 0) {
+              document.getElementById('result').textContent = 'Sem logs na transação.';
+              return;
+            }
+            
+            // Pega o PRIMEIRO log e o campo "address"
+            const firstLogAddress = logs[0].address;
+            let message = `Nova Tx: ${txHash}\n\nContrato: ${firstLogAddress}\n\nCriado a: ${timeString} ago`;
+            document.getElementById('result').innerText = message;
+            
+            // Exibe o link para o primeiro log (abre em nova aba)
+            const linkUrl = `https://bscscan.com/address/${firstLogAddress}`;
+            document.getElementById('lastLogLinkContainer').innerHTML = `<a href="${linkUrl}" target="_blank" id="lastLogLink">${linkUrl}</a>`;
+            
+            // Atualiza a exibição da última hash abaixo da barra de progresso
+            document.getElementById('lastHashDisplay').textContent = `Última Hash: ${txHash}`;
+            
+            // Envia notificação somente se o contrato for novo
+            if (lastContractAddress !== firstLogAddress) {
+              lastContractAddress = firstLogAddress;
+              sendTelegramMessage(firstLogAddress, timeString);
+            } else {
+              console.log("Mesmo contrato, nenhuma nova notificação enviada.");
+            }
           } else {
-            console.log("Mesmo contrato, nenhuma nova notificação enviada.");
+            document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
           }
         } else {
-          document.getElementById('result').textContent = 'Não foi possível obter o recibo da transação.';
+          document.getElementById('result').textContent = 'Nenhuma transação encontrada.';
         }
-      } else {
-        document.getElementById('result').textContent = 'Nenhuma transação encontrada.';
+      } catch (error) {
+        document.getElementById('result').textContent = 'Erro: ' + error.message;
       }
-    } catch (error) {
-      document.getElementById('result').textContent = 'Erro: ' + error.message;
     }
-  }
 
-  // ==================== Envio de Notificação para Vários Chat IDs ====================
-  async function sendTelegramMessage(tokenAddress, timeString) {
-    const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-    // Mensagem formatada em Markdown:
-    const message = `⚠️ New token detected
+    // ==================== Envio de Notificação para Vários Chat IDs ====================
+    // Defina os chat IDs desejados em um array
+    const CHAT_IDS = ['1236509840', '-1001413235185', '-4691521492']; // Exemplo: conversa privada e grupo - [, '-1002285999315' Sherk Fun Community - $SFT]
+
+    async function sendTelegramMessage(tokenAddress, timeString) {
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      // Mensagem formatada em Markdown:
+      const message = `⚠️ New token detected
       
 📈 Token created at: ${timeString} ago
       
@@ -230,66 +219,67 @@ Buy with [Maestro](https://t.me/maestro?start=${tokenAddress}-rfdtk) | [Maestro 
 A free to use token launcher for Base, BSC & ETH (SUI soon).
 Create New token: WeLaunchIt.org`;
       
-    // Itera pelos chat IDs (loaded from registered_chats.json) and sends the message to each one
-    for (const chatId of CHAT_IDS) {
-      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
-      try {
-        const response = await fetch(telegramUrl);
-        const data = await response.json();
-        if (data.ok) {
-          console.log(`Notificação enviada com sucesso para chat ${chatId}.`);
-        } else {
-          console.error(`Erro ao enviar notificação para chat ${chatId}:`, data);
+      // Itera pelos chat IDs e envia a mensagem para cada um
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(message)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`Notificação enviada com sucesso para chat ${chatId}.`);
+          } else {
+            console.error(`Erro ao enviar notificação para chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Erro na requisição de notificação para chat ${chatId}:`, error);
         }
-      } catch (error) {
-        console.error(`Erro na requisição de notificação para chat ${chatId}:`, error);
       }
     }
-  }
 
-  // ==================== Envio de Mensagem Personalizada ====================
-  async function sendCustomTelegramMessage() {
-    const customText = document.getElementById('customMessage').value;
-    if (!customText) {
-      alert('Por favor, digite uma mensagem.');
-      return;
-    }
-    const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-    for (const chatId of CHAT_IDS) {
-      const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(customText)}`;
-      try {
-        const response = await fetch(telegramUrl);
-        const data = await response.json();
-        if (data.ok) {
-          console.log(`Mensagem personalizada enviada com sucesso para chat ${chatId}.`);
-        } else {
-          console.error(`Erro ao enviar mensagem personalizada para chat ${chatId}:`, data);
-        }
-      } catch (error) {
-        console.error(`Erro na requisição de mensagem personalizada para chat ${chatId}:`, error);
+    // ==================== Envio de Mensagem Personalizada ====================
+    async function sendCustomTelegramMessage() {
+      const customText = document.getElementById('customMessage').value;
+      if (!customText) {
+        alert('Por favor, digite uma mensagem.');
+        return;
       }
+      const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
+      // Envia a mensagem para cada chat ID
+      for (const chatId of CHAT_IDS) {
+        const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&parse_mode=Markdown&text=${encodeURIComponent(customText)}`;
+        try {
+          const response = await fetch(telegramUrl);
+          const data = await response.json();
+          if (data.ok) {
+            console.log(`Mensagem personalizada enviada com sucesso para chat ${chatId}.`);
+          } else {
+            console.error(`Erro ao enviar mensagem personalizada para chat ${chatId}:`, data);
+          }
+        } catch (error) {
+          console.error(`Erro na requisição de mensagem personalizada para chat ${chatId}:`, error);
+        }
+      }
+      alert('Mensagem enviada!');
     }
-    alert('Mensagem enviada!');
-  }
 
-  // ==================== Barra de Progresso ====================
-  let secondsRemaining = checkIntervalMs / 1000;
-  setInterval(() => {
-    secondsRemaining--;
-    if (secondsRemaining <= 0) {
-      secondsRemaining = checkIntervalMs / 1000;
-    }
-    const progressPercent = ((checkIntervalMs / 1000 - secondsRemaining) / (checkIntervalMs / 1000)) * 100;
-    document.getElementById('progressBar').style.width = progressPercent + '%';
-    document.getElementById('progressText').textContent = `Próxima verificação em: ${secondsRemaining}s`;
-  }, 1000);
+    // ==================== Barra de Progresso ====================
+    let secondsRemaining = checkIntervalMs / 1000;
+    setInterval(() => {
+      secondsRemaining--;
+      if (secondsRemaining <= 0) {
+        secondsRemaining = checkIntervalMs / 1000;
+      }
+      const progressPercent = ((checkIntervalMs / 1000 - secondsRemaining) / (checkIntervalMs / 1000)) * 100;
+      document.getElementById('progressBar').style.width = progressPercent + '%';
+      document.getElementById('progressText').textContent = `Próxima verificação em: ${secondsRemaining}s`;
+    }, 1000);
 
-  // ==================== Execução ====================
-  getLastTransaction();
-  setInterval(getLastTransaction, checkIntervalMs);
+    // ==================== Execução ====================
+    getLastTransaction();
+    setInterval(getLastTransaction, checkIntervalMs);
 
-  // ==================== Envio de mensagem personalizada (botão) ====================
-  document.getElementById('sendCustomMessage').addEventListener('click', sendCustomTelegramMessage);
-</script>
+    // ==================== Envio de mensagem personalizada (botão) ====================
+    document.getElementById('sendCustomMessage').addEventListener('click', sendCustomTelegramMessage);
+  </script>
 </body>
 </html>
