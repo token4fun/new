@@ -98,7 +98,7 @@
   <!-- Exibição da última hash -->
   <div id="lastHashDisplay">Última Hash: </div>
   
-  <!-- Campo de mensagem personalizada -->
+  <!-- Campo para mensagem personalizada (apenas um container) -->
   <div id="customMessageContainer">
     <input type="text" id="customMessage" placeholder="Digite sua mensagem aqui" />
     <button id="sendCustomMessage">Enviar</button>
@@ -189,7 +189,7 @@
 
     async function sendTelegramMessage(tokenAddress, timeString) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840'; // Use o chat id correto (ex.: conversa privada)
+      const CHAT_ID = '1236509840'; // Use o chat id correto (por exemplo, conversa privada)
       
       const message = `⚠️ New token detected
       
@@ -263,11 +263,5 @@ Create New token: WeLaunchIt.org`;
     // ==================== Envio de mensagem personalizada ====================
     document.getElementById('sendCustomMessage').addEventListener('click', sendCustomTelegramMessage);
   </script>
-
-  <!-- Campo para mensagem personalizada -->
-  <div id="customMessageContainer">
-    <input type="text" id="customMessage" placeholder="Digite sua mensagem aqui" />
-    <button id="sendCustomMessage">Enviar</button>
-  </div>
 </body>
 </html>
