@@ -1,4 +1,5 @@
 // server.js
+require('./monitor.js'); // <-- Importa e executa o monitoramento
 const express = require('express');
 const path = require('path');
 const app = express();
