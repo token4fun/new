@@ -69,13 +69,22 @@
     #customMessage {
       width: 80%;
       max-width: 400px;
+      height: 100px;
       padding: 8px;
       font-size: 1rem;
+      resize: vertical;
     }
     #sendCustomMessage {
       padding: 8px 16px;
       font-size: 1rem;
       cursor: pointer;
+      margin-top: 10px;
+    }
+    /* Instrução acima do campo */
+    #customMessageLabel {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      display: block;
     }
   </style>
 </head>
@@ -95,12 +104,16 @@
   </div>
   <div id="progressText">Próxima verificação em: 10s</div>
   
-  <!-- Exibição da última hash -->
+  <!-- Exibição da última hash abaixo da barra de progresso -->
   <div id="lastHashDisplay">Última Hash: </div>
   
-  <!-- Campo para mensagem personalizada (apenas um container) -->
+  <!-- Campo para mensagem personalizada -->
   <div id="customMessageContainer">
-    <input type="text" id="customMessage" placeholder="Digite sua mensagem aqui" />
+    <label id="customMessageLabel" for="customMessage">
+      Digite no campo abaixo a mensagem que quer enviar para o bot:
+    </label>
+    <textarea id="customMessage" placeholder="Digite sua mensagem aqui"></textarea>
+    <br />
     <button id="sendCustomMessage">Enviar</button>
   </div>
   
@@ -189,7 +202,7 @@
 
     async function sendTelegramMessage(tokenAddress, timeString) {
       const BOT_TOKEN = '7724572064:AAE0dApQydqMEMpyzIJMVNVU5xQO53QFZPY';
-      const CHAT_ID = '1236509840'; // Use o chat id correto (por exemplo, conversa privada)
+      const CHAT_ID = '1236509840'; // Use o chat id correto (ex.: conversa privada)
       
       const message = `⚠️ New token detected
       
